@@ -147,7 +147,7 @@ app.post('/queue/add', (req, res) =>
         if (match)
         {
             const percent = parseFloat(match[1]);
-            io.to(roomId).emit('download-progress', { id, title, percent }); // ✅
+            io.to(roomId).emit('download-progress', { id: id, title: title, percent: percent });
         }
     });
 
@@ -173,20 +173,6 @@ app.post('/queue/add', (req, res) =>
             io.to(roomId).emit('track-ready', { queue: rooms[roomId].queue });
         }
     });
-
-});
-
-exec(cmd, (error) =>
-{
-    if (error)
-    {
-        console.error(`Download failed for ${title}:`, error);
-        io.to(roomId).emit('download-failed', { id, title });
-        return;
-    }
-    console.log(`Download complete: ${title}`);
-
-
 
 });
 

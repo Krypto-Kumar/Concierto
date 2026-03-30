@@ -68,6 +68,7 @@ function RoomPage() {
 	const [isReady, setIsReady] = useState(false);
 	const [isHost, setIsHost] = useState(false);
 	const [toasts, setToasts] = useState([]);
+	const [downloads, setDownloads] = useState([]);
 
 	const joinTimeRef = useRef(0);
 
@@ -100,6 +101,9 @@ function RoomPage() {
 
 		socket.on("track-ready", ({queue}) => {
 			setRoomState((prev) => ({...prev, queue}));
+			setDownloads((prev) =>
+				prev.filter((d) => d.id !== queue[queue.length - 1].id),
+			);
 		});
 
 		socket.on("download-failed", ({title}) => {
@@ -110,6 +114,17 @@ function RoomPage() {
 			addToast(message);
 		});
 
+		socket.on("download-progress", ({id, title, percent}) => {
+			setDownloads((prev) => {
+				const exists = prev.some((d) => d.id === id);
+				if (exists) {
+					return prev.map((d) => (d.id === id ? {...d, percent} : d));
+				} else {
+					return [...prev, {id, title, percent}];
+				}
+			});
+		});
+
 		return () => {
 			socket.off("room-state");
 			socket.off("claim-host");
@@ -117,6 +132,7 @@ function RoomPage() {
 			socket.off("download-failed");
 			socket.off("new-host");
 			socket.off("error");
+			socket.off("download-progress");
 		};
 	}, []);
 
@@ -148,6 +164,7 @@ function RoomPage() {
 	return (
 		<div>
 			<p>Room: {roomId}</p>
+
 			<Audio
 				roomState={roomState}
 				setRoomState={setRoomState}
@@ -156,13 +173,17 @@ function RoomPage() {
 				joinTimeRef={joinTimeRef}
 				isHost={isHost}
 			/>
+
 			<Search roomId={roomId} addToast={addToast} />
+
 			<DisplayQueue
 				roomState={roomState}
 				socket={socket}
 				roomId={roomId}
 				isHost={isHost}
+				downloads={downloads}
 			/>
+
 			<Toast toasts={toasts} />
 		</div>
 	);
@@ -316,7 +337,8 @@ function SongInfo({
 		socket.emit("seek", {roomId, currentTime: value});
 	}
 
-	const imgSrc = roomState.queue[roomState.currentIndex]?.thumbnail;
+	// Implement later, let the user choose if he wants to see the thumbnail or not
+	// const imgSrc = roomState.queue[roomState.currentIndex]?.thumbnail;
 
 	return (
 		<div>
@@ -328,7 +350,7 @@ function SongInfo({
 				onChange={(e) => handleSeekbarUpdate(e.target.value)}
 			/>
 
-			<img src={imgSrc} alt="" />
+			{/* <img src={imgSrc} alt="" /> */}
 
 			<p>{trackName}</p>
 
@@ -476,7 +498,7 @@ function Search({roomId, addToast}) {
 	);
 }
 
-function DisplayQueue({roomState, socket, roomId, isHost}) {
+function DisplayQueue({roomState, socket, roomId, isHost, downloads}) {
 	function deleteSong(songId) {
 		socket.emit("delete-track", {roomId, trackId: songId});
 	}
@@ -495,14 +517,22 @@ function DisplayQueue({roomState, socket, roomId, isHost}) {
 					</li>
 				))}
 			</ul>
+
+			<ul>
+				{downloads.map((song) => (
+					<li key={song.id}>
+						{song.title}
+						{"   "}
+						<progress value={song.percent} max={100} />
+						{song.percent}
+					</li>
+				))}
+			</ul>
 		</div>
 	);
 }
 
 function Toast({toasts}) {
-	useEffect(() => {
-		return () => {};
-	}, []);
 
 	return (
 		<div>
