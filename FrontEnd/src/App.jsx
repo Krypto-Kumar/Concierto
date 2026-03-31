@@ -129,7 +129,7 @@ function RoomPage() {
 			socket.off("room-state");
 			socket.off("claim-host");
 			socket.off("track-ready");
-			socket.off("download-failed");
+			// socket.off("download-failed");
 			socket.off("new-host");
 			socket.off("error");
 			socket.off("download-progress");
@@ -152,8 +152,11 @@ function RoomPage() {
 				<h2>Room: {roomId}</h2>
 				<button
 					onClick={() => {
-						joinTimeRef.current = roomState.currentTime;
-						setIsReady(true);
+						socket.emit("get-current-time", roomId);
+						socket.once("current-time", ({currentTime}) => {
+							joinTimeRef.current = currentTime;
+							setIsReady(true);
+						});
 					}}>
 					Click to Join
 				</button>
@@ -264,11 +267,13 @@ function Audio({roomState, setRoomState, socket, roomId, joinTimeRef, isHost}) {
 				.play()
 				.then(() => {
 					setRoomState((prev) => ({...prev, playing: true}));
-					socket.emit("play-pause", {
-						roomId,
-						playing: true,
-						currentTime: audioRef.current.currentTime,
-					});
+					if (isHost) {
+						socket.emit("play-pause", {
+							roomId,
+							playing: true,
+							currentTime: audioRef.current.currentTime,
+						});
+					}
 				})
 				.catch((err) => {
 					if (err.name !== "AbortError")
@@ -533,7 +538,6 @@ function DisplayQueue({roomState, socket, roomId, isHost, downloads}) {
 }
 
 function Toast({toasts}) {
-
 	return (
 		<div>
 			{toasts.map((toast) => (

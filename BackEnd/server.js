@@ -4,6 +4,7 @@ const http = require('http');
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
+const path = require("path");
 
 const app = express();
 const server = http.createServer(app);
@@ -16,7 +17,74 @@ app.use('/audio', express.static('downloads'));
 const rooms = {};
 const serverState = {};
 
+const songsTracking = {
+    //   "abc123": {
+    //     filePath: "./songs/abc123.mp3",
+    //     lastUsedAt: Date.now(),
+    //     inUse: false
+    //   }
+};
+
+
+
 // Utility
+setInterval(() =>
+{
+    const now = Date.now();
+    const TTL = 20 * 60 * 1000; // 20 minutes
+
+
+    Object.entries(songsTracking).forEach(([id, song]) =>
+    {
+
+        const isExpired = (now - songsTracking[id].lastUsedAt) > TTL;
+        const isInUseCount = song.inUseCount;
+
+        if (isInUseCount === 0 && isExpired)
+        {
+            fs.unlink(song.filePath, (err) =>
+            {
+                if (err)
+                {
+                    console.error("Error deleting:", song.filePath, err);
+                } else
+                {
+                    console.log("Deleted:", song.filePath);
+                    delete songsTracking[id];
+                }
+            });
+        }
+    });
+
+    for (const id in rooms) 
+    {
+        const socketsInRoom = io.sockets.adapter.rooms.get(id);
+        if (!socketsInRoom)
+        {
+            delete rooms[id];
+            delete serverState[id];
+            console.log(`Room ${id} deleted`);
+        }
+    }
+}, 60 * 1000);
+
+
+const SONGS_DIR = "./downloads";
+
+fs.readdir(SONGS_DIR, (err, files) =>
+{
+    if (err) return console.error('Could not read downloads dir:', err);
+    files.forEach(file =>
+    {
+        const id = file.split(".")[0];
+
+        songsTracking[id] = {
+            lastUsedAt: Date.now(),
+            filePath: path.join(SONGS_DIR, file),
+            inUseCount: 0
+        };
+    });
+});
 
 // Creation of Random RoodId
 function generateRoomId()
@@ -28,8 +96,6 @@ function generateHostToken()
 {
     return Math.random().toString(36).substring(2, 18).toUpperCase();
 }
-
-
 
 // !-------------------------------------------------------------------------------------------------------------------------!
 
@@ -121,7 +187,7 @@ app.post('/queue/add', (req, res) =>
     }
 
     const outputPath = `downloads/${id}.mp3`;
-    const cmd = `yt-dlp -t mp3 -o "${outputPath}" "${url}"`;
+    // const cmd = `yt-dlp -t mp3 -o "${outputPath}" "${url}"`;
 
     const fileExists = fs.existsSync(outputPath);
 
@@ -129,6 +195,8 @@ app.post('/queue/add', (req, res) =>
     {
         const track = { id, title, src: `http://localhost:3001/audio/${id}.mp3`, thumbnail: `https://img.youtube.com/vi/${id}/0.jpg` };
         rooms[roomId].queue.push(track);
+        songsTracking[track.id].inUseCount += 1;
+        songsTracking[track.id].lastUsedAt = Date.now();
         io.to(roomId).emit('track-ready', { queue: rooms[roomId].queue });
         return res.json({ id, title, status: 'added' });
     }
@@ -169,6 +237,11 @@ app.post('/queue/add', (req, res) =>
 
         if (rooms[roomId])
         {
+            songsTracking[track.id] = {
+                filePath: outputPath,
+                lastUsedAt: Date.now(),
+                inUseCount: 1
+            }
             rooms[roomId].queue.push(track);
             io.to(roomId).emit('track-ready', { queue: rooms[roomId].queue });
         }
@@ -283,10 +356,17 @@ io.on('connection', (socket) =>
             }
             else
             {
+                const trackId = room.queue[0].id;
+                if (songsTracking[trackId])
+                {
+                    songsTracking[trackId].inUseCount -= 1;
+                }
+
                 room.queue.shift();
             }
 
             room.currentTime = 0;
+            songsTracking[room.queue[room.currentIndex].id].lastUsedAt = Date.now();
             console.log("Room ID: ", roomId);
             console.log("Next Track Selected: ", currentIndex);
             console.log("----------------------------------------------\n");
@@ -307,6 +387,7 @@ io.on('connection', (socket) =>
         {
             room.currentIndex -= 1;
             room.currentTime = 0;
+            songsTracking[room.queue[room.currentIndex].id].lastUsedAt = Date.now();
 
             console.log("Room ID: ", roomId);
             console.log("Previous Track Selected: ", currentIndex);
@@ -324,6 +405,14 @@ io.on('connection', (socket) =>
         if (rooms[roomId])
         {
             rooms[roomId].currentTime = currentTime;
+        }
+    });
+
+    socket.on('get-current-time', (roomId) =>
+    {
+        if (rooms[roomId])
+        {
+            socket.emit('current-time', { currentTime: rooms[roomId].currentTime });
         }
     });
 
@@ -351,6 +440,11 @@ io.on('connection', (socket) =>
 
         rooms[roomId].queue = queue;
 
+        if (songsTracking[trackId])
+        {
+            songsTracking[trackId].inUseCount -= 1;
+        }
+
         io.to(roomId).emit('room-state', rooms[roomId]);
     });
 
@@ -372,18 +466,10 @@ io.on('connection', (socket) =>
             io.to(roomId).emit('new-host', { hostSocketId: serverState[roomId].joinQueue[0] });
         }
 
-        for (const id in rooms) 
-        {
-            const socketsInRoom = io.sockets.adapter.rooms.get(id);
-            if (!socketsInRoom)
-            {
-                delete rooms[id];
-                delete serverState[id];
-                console.log(`Room ${id} deleted`);
-            }
-        }
+
     });
 
 });
 
-server.listen(3001, () => console.log('Server Running on Port: 3001'));
+const port = process.env.PORT || 3001;
+server.listen(port, () => console.log('Server Running on Port: 3001'));
