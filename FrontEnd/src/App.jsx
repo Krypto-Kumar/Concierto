@@ -456,6 +456,7 @@ function Search({roomId, addToast}) {
 			`https://concierto-backend.onrender.com/search?q=${encodeURIComponent(value)}`,
 		);
 		const data = await response.json();
+		console.log(data);
 		setResults(data);
 	}
 
