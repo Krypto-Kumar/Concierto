@@ -8,7 +8,7 @@ import {
 	useParams,
 } from "react-router-dom";
 
-const socket = io("http://localhost:3001");
+const socket = io("https://concierto-backend.onrender.com");
 
 function App() {
 	return (
@@ -26,7 +26,7 @@ function HomePage() {
 	const navigate = useNavigate();
 
 	async function handleCreate() {
-		const response = await fetch("http://localhost:3001/create-room");
+		const response = await fetch("https://concierto-backend.onrender.com/create-room");
 		const {roomId, hostToken} = await response.json();
 		localStorage.setItem("hostToken", hostToken);
 		navigate(`/room/${roomId}`);
@@ -460,7 +460,7 @@ function Search({roomId, addToast}) {
 	}
 
 	function addToQueue(song) {
-		fetch("http://localhost:3001/queue/add", {
+		fetch("https://concierto-backend.onrender.com/queue/add", {
 			method: "POST",
 			headers: {"Content-Type": "application/json"},
 			body: JSON.stringify({
