@@ -453,7 +453,7 @@ function Search({roomId, addToast}) {
 		}
 
 		const response = await fetch(
-			`http://localhost:3001/search?q=${encodeURIComponent(value)}`,
+			`https://concierto-backend.onrender.com/search?q=${encodeURIComponent(value)}`,
 		);
 		const data = await response.json();
 		setResults(data);
