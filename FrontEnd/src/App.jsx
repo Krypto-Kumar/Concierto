@@ -33,19 +33,11 @@ function HomePage() {
 	const navigate = useNavigate();
 
 	async function handleCreate() {
-  console.log("Calling:", `${backendServerLink}/create-room`);
-
-  const response = await fetch(`${backendServerLink}/create-room`, {
-  headers: {
-    "ngrok-skip-browser-warning": "true"
-  }
-});
-  const text = await response.text();
-
-  console.log("RAW RESPONSE:", text);
-
-  const data = JSON.parse(text); // will fail if HTML
-}
+		const response = await fetch(`${backendServerLink}/create-room`);
+		const {roomId, hostToken} = await response.json();
+		localStorage.setItem("hostToken", hostToken);
+		navigate(`/room/${roomId}`);
+	}
 
 	function handleJoin() {
 		if (!input.trim()) return;
