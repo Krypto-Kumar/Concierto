@@ -226,6 +226,7 @@ app.post('/queue/add', (req, res) =>
     
     download.stderr.on('data', (data) =>
     {
+        console.log("YT-DLP STDERR:", data.toString());
         const match = data.toString().match(/(\d+\.?\d*)%/);
         if (match)
         {
