@@ -1,6 +1,5 @@
 FROM node:18
 
-# Install dependencies
 RUN apt-get update && \
     apt-get install -y ffmpeg curl && \
     curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
