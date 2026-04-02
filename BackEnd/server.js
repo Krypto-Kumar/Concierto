@@ -137,17 +137,21 @@ app.get('/create-room', (req, res) =>
 });
 
 // GET /search?q=some+song+name
-app.get('/search', (req, res) => {
+app.get('/search', (req, res) =>
+{
     const query = req.query.q;
 
-    if (!query) {
+    if (!query)
+    {
         return res.status(400).json({ error: 'No search query provided' });
     }
 
     const cmd = `/usr/local/bin/yt-dlp "ytsearch5:${query}" --dump-json --flat-playlist --no-download`;
 
-    exec(cmd, (error, stdout, stderr) => {
-        if (error) {
+    exec(cmd, (error, stdout, stderr) =>
+    {
+        if (error)
+        {
             console.log(error);
             return res.status(500).json({ error: 'Search failed' });
         }
@@ -169,35 +173,40 @@ app.get('/search', (req, res) => {
 
 
 // POST /queue/add  (body: { roomId, url, title, id }
-app.post('/queue/add', (req, res) => {
+app.post('/queue/add', (req, res) =>
+{
     const { roomId, url, title, id } = req.body;
     const queueFull = rooms[roomId]?.queue.length >= 8;
 
-    if (queueFull) {
+    if (queueFull)
+    {
         return res.status(400).json({ error: 'Queue is full' });
     }
 
     const upcomingTracks = rooms[roomId]?.queue.slice(rooms[roomId].currentIndex);
     const alreadyInQueue = upcomingTracks.some(track => track.id === id);
 
-    if (alreadyInQueue) {
+    if (alreadyInQueue)
+    {
         return res.status(400).json({ error: 'Already in Queue' });
     }
 
-    const outputPath = path.join(downloadsDir, `${id}.mp3`); 
+    const outputPath = path.join(downloadsDir, `${id}.mp3`);
     const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
     const fileExists = fs.existsSync(outputPath);
 
-    if (fileExists) {
+    if (fileExists)
+    {
         const track = {
             id, title,
-            src: `${BACKEND_URL}/audio/${id}.mp3`, 
+            src: `${BACKEND_URL}/audio/${id}.mp3`,
             thumbnail: `https://img.youtube.com/vi/${id}/0.jpg`
         };
 
         rooms[roomId].queue.push(track);
-        
-        if (songsTracking[track.id]) {
+
+        if (songsTracking[track.id])
+        {
             songsTracking[track.id].inUseCount += 1;
             songsTracking[track.id].lastUsedAt = Date.now();
         }
@@ -213,16 +222,20 @@ app.post('/queue/add', (req, res) => {
         url
     ]);
 
-    download.stderr.on('data', (data) => {
+    download.stderr.on('data', (data) =>
+    {
         const match = data.toString().match(/(\d+\.?\d*)%/);
-        if (match) {
+        if (match)
+        {
             const percent = parseFloat(match[1]);
             io.to(roomId).emit('download-progress', { id, title, percent });
         }
     });
 
-    download.on('close', (code) => {
-        if (code !== 0) {
+    download.on('close', (code) =>
+    {
+        if (code !== 0)
+        {
             io.to(roomId).emit('download-failed', { id, title });
             console.error(`Download failed for ${title}:`, code);
             return;
@@ -230,11 +243,12 @@ app.post('/queue/add', (req, res) => {
 
         const track = {
             id, title,
-            src: `${BACKEND_URL}/audio/${id}.mp3`, 
+            src: `${BACKEND_URL}/audio/${id}.mp3`,
             thumbnail: `https://img.youtube.com/vi/${id}/0.jpg`
         };
 
-        if (rooms[roomId]) {
+        if (rooms[roomId])
+        {
             songsTracking[track.id] = {
                 filePath: outputPath,
                 lastUsedAt: Date.now(),
@@ -362,7 +376,13 @@ io.on('connection', (socket) =>
             }
 
             room.currentTime = 0;
-            songsTracking[room.queue[room.currentIndex].id].lastUsedAt = Date.now();
+
+            const currentTrackId = room.queue[room.currentIndex]?.id;
+            if (currentTrackId && songsTracking[currentTrackId])
+            {
+                songsTracking[currentTrackId].lastUsedAt = Date.now();
+            }
+
             console.log("Room ID: ", roomId);
             console.log("Next Track Selected: ", currentIndex);
             console.log("----------------------------------------------\n");
@@ -383,7 +403,12 @@ io.on('connection', (socket) =>
         {
             room.currentIndex -= 1;
             room.currentTime = 0;
-            songsTracking[room.queue[room.currentIndex].id].lastUsedAt = Date.now();
+
+            const currentTrackId = room.queue[room.currentIndex]?.id;
+            if (currentTrackId && songsTracking[currentTrackId])
+            {
+                songsTracking[currentTrackId].lastUsedAt = Date.now();
+            }
 
             console.log("Room ID: ", roomId);
             console.log("Previous Track Selected: ", currentIndex);
