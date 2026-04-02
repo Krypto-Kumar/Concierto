@@ -222,6 +222,8 @@ app.post('/queue/add', (req, res) =>
         url
     ]);
 
+    console.log("URL: ", url);
+    
     download.stderr.on('data', (data) =>
     {
         const match = data.toString().match(/(\d+\.?\d*)%/);
