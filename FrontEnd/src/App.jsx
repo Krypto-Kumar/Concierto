@@ -10,7 +10,9 @@ import {
 
 const backendServerLink = "https://hyperlustrous-unsuspectfully-denny.ngrok-free.dev";
 
-const socket = io(`${backendServerLink}`);
+const socket = io(backendServerLink, {
+  withCredentials: true
+});
 
 function App() {
 	return (
