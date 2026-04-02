@@ -218,6 +218,7 @@ app.post('/queue/add', (req, res) =>
 
     const download = spawn('/usr/local/bin/yt-dlp', [
     url,
+    '--cookies-from-browser chrome',
     '--js-runtimes', 'node',
     '--no-playlist',
     '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
