@@ -8,7 +8,9 @@ import {
 	useParams,
 } from "react-router-dom";
 
-const socket = io("http://localhost:3001");
+const backendServerLink = "http://localhost:3001";
+
+const socket = io(`${backendServerLink}`);
 
 function App() {
 	return (
@@ -26,7 +28,7 @@ function HomePage() {
 	const navigate = useNavigate();
 
 	async function handleCreate() {
-		const response = await fetch("http://localhost:3001/create-room");
+		const response = await fetch(`${backendServerLink}/create-room`);
 		const {roomId, hostToken} = await response.json();
 		localStorage.setItem("hostToken", hostToken);
 		navigate(`/room/${roomId}`);
@@ -129,7 +131,7 @@ function RoomPage() {
 			socket.off("room-state");
 			socket.off("claim-host");
 			socket.off("track-ready");
-			// socket.off("download-failed");
+			socket.off("download-failed");
 			socket.off("new-host");
 			socket.off("error");
 			socket.off("download-progress");
@@ -453,14 +455,14 @@ function Search({roomId, addToast}) {
 		}
 
 		const response = await fetch(
-			`http://localhost:3001/search?q=${encodeURIComponent(value)}`,
+			`${backendServerLink}/search?q=${encodeURIComponent(value)}`,
 		);
 		const data = await response.json();
 		setResults(data);
 	}
 
 	function addToQueue(song) {
-		fetch("http://localhost:3001/queue/add", {
+		fetch(`${backendServerLink}/queue/add`, {
 			method: "POST",
 			headers: {"Content-Type": "application/json"},
 			body: JSON.stringify({
