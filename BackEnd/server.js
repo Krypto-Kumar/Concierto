@@ -217,10 +217,15 @@ app.post('/queue/add', (req, res) =>
     res.json({ id, title, status: 'downloading' });
 
     const download = spawn('/usr/local/bin/yt-dlp', [
-        '-x', '--audio-format', 'mp3',
-        '-o', outputPath,
-        url
-    ]);
+    cleanUrl,
+    '--js-runtimes', 'node',
+    '--no-playlist',
+    '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+    '--extractor-args', 'youtube:player_client=android',
+    '-x',
+    '--audio-format', 'mp3',
+    '-o', outputPath
+]);
 
     console.log("URL: ", url);
     
