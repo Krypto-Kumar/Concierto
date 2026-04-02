@@ -137,27 +137,17 @@ app.get('/create-room', (req, res) =>
 });
 
 // GET /search?q=some+song+name
-app.get('/search', (req, res) =>
-{
+app.get('/search', (req, res) => {
     const query = req.query.q;
 
-    if (!query)
-    {
+    if (!query) {
         return res.status(400).json({ error: 'No search query provided' });
     }
 
-    const cmd = `/usr/local/bin/yt-dlp yt-dlp "ytsearch5:${query}" --dump-json --flat-playlist --no-download`;
+    const cmd = `/usr/local/bin/yt-dlp "ytsearch5:${query}" --dump-json --flat-playlist --no-download`;
 
-    exec("/usr/local/bin/yt-dlp --version", (err, stdout, stderr) =>
-    {
-        console.log("STDOUT:", stdout);
-        console.log("STDERR:", stderr);
-    });
-
-    exec(cmd, (error, stdout, stderr) =>
-    {
-        if (error)
-        {
+    exec(cmd, (error, stdout, stderr) => {
+        if (error) {
             console.log(error);
             return res.status(500).json({ error: 'Search failed' });
         }
@@ -177,40 +167,40 @@ app.get('/search', (req, res) =>
     });
 });
 
-// POST /queue/add  (body: { roomId, url, title, id })
-app.post('/queue/add', (req, res) =>
-{
+
+// POST /queue/add  (body: { roomId, url, title, id }
+app.post('/queue/add', (req, res) => {
     const { roomId, url, title, id } = req.body;
     const queueFull = rooms[roomId]?.queue.length >= 8;
 
-    if (queueFull)
-    {
+    if (queueFull) {
         return res.status(400).json({ error: 'Queue is full' });
     }
 
     const upcomingTracks = rooms[roomId]?.queue.slice(rooms[roomId].currentIndex);
     const alreadyInQueue = upcomingTracks.some(track => track.id === id);
 
-    if (alreadyInQueue)
-    {
-        console.log("Room ID: ", roomId);
-        console.log("Song Add Request Denied (Already In Queue): ", title);
-        console.log("----------------------------------------------\n");
-
+    if (alreadyInQueue) {
         return res.status(400).json({ error: 'Already in Queue' });
     }
 
-    const output = path.join(downloadsDir, `audio_${Date.now()}.mp3`);
-    // const cmd = `yt-dlp -t mp3 -o "${outputPath}" "${url}"`;
-
+    const outputPath = path.join(downloadsDir, `${id}.mp3`); 
+    const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
     const fileExists = fs.existsSync(outputPath);
 
-    if (fileExists)
-    {
-        const track = { id, title, src: `http://localhost:3001/audio/${id}.mp3`, thumbnail: `https://img.youtube.com/vi/${id}/0.jpg` };
+    if (fileExists) {
+        const track = {
+            id, title,
+            src: `${BACKEND_URL}/audio/${id}.mp3`, 
+            thumbnail: `https://img.youtube.com/vi/${id}/0.jpg`
+        };
+
         rooms[roomId].queue.push(track);
-        songsTracking[track.id].inUseCount += 1;
-        songsTracking[track.id].lastUsedAt = Date.now();
+        
+        if (songsTracking[track.id]) {
+            songsTracking[track.id].inUseCount += 1;
+            songsTracking[track.id].lastUsedAt = Date.now();
+        }
         io.to(roomId).emit('track-ready', { queue: rooms[roomId].queue });
         return res.json({ id, title, status: 'added' });
     }
@@ -223,46 +213,38 @@ app.post('/queue/add', (req, res) =>
         url
     ]);
 
-    download.stdout.on('data', (data) =>
-    {
+    download.stderr.on('data', (data) => {
         const match = data.toString().match(/(\d+\.?\d*)%/);
-        if (match)
-        {
+        if (match) {
             const percent = parseFloat(match[1]);
-            io.to(roomId).emit('download-progress', { id: id, title: title, percent: percent });
+            io.to(roomId).emit('download-progress', { id, title, percent });
         }
     });
 
-    download.on('close', (code) =>
-    {
-        if (code !== 0)
-        {
+    download.on('close', (code) => {
+        if (code !== 0) {
             io.to(roomId).emit('download-failed', { id, title });
             console.error(`Download failed for ${title}:`, code);
             return;
         }
 
         const track = {
-            id,
-            title,
-            src: `http://localhost:3001/audio/${id}.mp3`,
+            id, title,
+            src: `${BACKEND_URL}/audio/${id}.mp3`, 
             thumbnail: `https://img.youtube.com/vi/${id}/0.jpg`
         };
 
-        if (rooms[roomId])
-        {
+        if (rooms[roomId]) {
             songsTracking[track.id] = {
                 filePath: outputPath,
                 lastUsedAt: Date.now(),
                 inUseCount: 1
-            }
+            };
             rooms[roomId].queue.push(track);
             io.to(roomId).emit('track-ready', { queue: rooms[roomId].queue });
         }
     });
-
 });
-
 // ------------------Socket----------------------------------------------------------
 
 io.on('connection', (socket) =>
