@@ -25,6 +25,13 @@ const songsTracking = {
     //   }
 };
 
+const downloadsDir = path.join(__dirname, "downloads");
+
+// Create folder if it doesn't exist
+if (!fs.existsSync(downloadsDir))
+{
+    fs.mkdirSync(downloadsDir);
+}
 
 
 // Utility
@@ -139,7 +146,13 @@ app.get('/search', (req, res) =>
         return res.status(400).json({ error: 'No search query provided' });
     }
 
-    const cmd = `yt-dlp "ytsearch5:${query}" --dump-json --flat-playlist --no-download`;
+    const cmd = `/usr/local/bin/yt-dlp yt-dlp "ytsearch5:${query}" --dump-json --flat-playlist --no-download`;
+
+    exec("/usr/local/bin/yt-dlp --version", (err, stdout, stderr) =>
+    {
+        console.log("STDOUT:", stdout);
+        console.log("STDERR:", stderr);
+    });
 
     exec(cmd, (error, stdout, stderr) =>
     {
@@ -187,7 +200,7 @@ app.post('/queue/add', (req, res) =>
         return res.status(400).json({ error: 'Already in Queue' });
     }
 
-    const outputPath = `downloads/${id}.mp3`;
+    const output = path.join(downloadsDir, `audio_${Date.now()}.mp3`);
     // const cmd = `yt-dlp -t mp3 -o "${outputPath}" "${url}"`;
 
     const fileExists = fs.existsSync(outputPath);
@@ -204,7 +217,7 @@ app.post('/queue/add', (req, res) =>
 
     res.json({ id, title, status: 'downloading' });
 
-    const download = spawn('yt-dlp', [
+    const download = spawn('/usr/local/bin/yt-dlp', [
         '-x', '--audio-format', 'mp3',
         '-o', outputPath,
         url
