@@ -11,7 +11,10 @@ import {
 const backendServerLink = "https://hyperlustrous-unsuspectfully-denny.ngrok-free.dev";
 
 const socket = io(backendServerLink, {
-  transports: ["websocket"]
+  transports: ["websocket"],
+  extraHeaders: {
+    "ngrok-skip-browser-warning": "true"
+  }
 });
 
 function App() {
@@ -32,7 +35,11 @@ function HomePage() {
 	async function handleCreate() {
   console.log("Calling:", `${backendServerLink}/create-room`);
 
-  const response = await fetch(`${backendServerLink}/create-room`);
+  const response = await fetch(`${backendServerLink}/create-room`, {
+  headers: {
+    "ngrok-skip-browser-warning": "true"
+  }
+});
   const text = await response.text();
 
   console.log("RAW RESPONSE:", text);
@@ -461,7 +468,11 @@ function Search({roomId, addToast}) {
 		}
 
 		const response = await fetch(
-			`${backendServerLink}/search?q=${encodeURIComponent(value)}`,
+			`${backendServerLink}/search?q=${encodeURIComponent(value)}`,{
+  headers: {
+    "ngrok-skip-browser-warning": "true"
+  }
+}
 		);
 		const data = await response.json();
 		console.log(data);
