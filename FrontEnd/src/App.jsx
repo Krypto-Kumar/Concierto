@@ -458,6 +458,7 @@ function Search({roomId, addToast}) {
 			`${backendServerLink}/search?q=${encodeURIComponent(value)}`,
 		);
 		const data = await response.json();
+		console.log(data);
 		setResults(data);
 	}
 
