@@ -8,7 +8,7 @@ import {
 	useParams,
 } from "react-router-dom";
 
-const backendServerLink = "https://concierto-backend.onrender.com";
+const backendServerLink = "https://hyperlustrous-unsuspectfully-denny.ngrok-free.dev";
 
 const socket = io(backendServerLink, {
   transports: ["websocket"],
